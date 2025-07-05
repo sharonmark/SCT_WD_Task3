@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tic Tac Toe</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      background: linear-gradient(135deg, #f5f5dc, #ffffff);
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+      font-size: 2.5rem;
+    }
+    #game-board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-gap: 10px;
+      justify-content: center;
+      margin: 20px auto;
+    }
+    .cell {
+  width: 100px;
+  height: 100px;
+  background-color: white;
+  border: 2px solid #444;
+  font-size: 2.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s;
+}
+
+.cell.x {
+  color: #007bff; /* blue for X */
+}
+
+.cell.o {
+  color: #ff4136; /* red for O */
+}
+
+    .cell:hover {
+      background-color: #f0f0f0;
+    }
+    #message {
+      margin: 20px 0;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #222;
+    }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      background-color: #ffffff;
+      border: 2px solid #333;
+      border-radius: 8px;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #e0e0e0;
+    }
+    #difficulty-buttons {
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tic-Tac-Toe</h1>
+  <div>
+    <button onclick="setMode('human')">2 Player Mode</button>
+    <button onclick="showDifficulty()">Play vs Computer</button>
+  </div>
+  <div id="difficulty-buttons">
+    <button onclick="setMode('computer', 'easy')">Easy</button>
+    <button onclick="setMode('computer', 'medium')">Medium</button>
+    <button onclick="setMode('computer', 'hard')">Hard</button>
+  </div>
+  <div id="message">Select a mode to start the game</div>
+  <div id="game-board"></div>
+  <button onclick="resetGame()">Reset Game</button>
+
+  <script>
+    let board = ['', '', '', '', '', '', '', '', ''];
+    let currentPlayer = 'X';
+    let isGameOver = false;
+    let gameMode = null;
+    let aiDifficulty = 'hard';
+    let resetTimeout;
+
+    const boardElement = document.getElementById('game-board');
+    const messageElement = document.getElementById('message');
+    const difficultyButtons = document.getElementById('difficulty-buttons');
+
+    function showDifficulty() {
+      difficultyButtons.style.display = 'block';
+    }
+
+    function setMode(mode, difficulty = 'hard') {
+      gameMode = mode;
+      aiDifficulty = difficulty;
+      difficultyButtons.style.display = 'none';
+      resetGame();
+      messageElement.textContent = `Mode: Play vs Computer (${difficulty}) — Player X starts`;
+    }
+
+    function drawBoard() {
+  boardElement.innerHTML = '';
+  board.forEach((cell, index) => {
+    const cellElement = document.createElement('div');
+    cellElement.className = 'cell';
+    if (cell === 'X') cellElement.classList.add('x');
+    if (cell === 'O') cellElement.classList.add('o');
+    cellElement.textContent = cell;
+    cellElement.addEventListener('click', () => handleClick(index));
+    boardElement.appendChild(cellElement);
+  });
+}
+
+    function handleClick(index) {
+      if (isGameOver || board[index] !== '') return;
+
+      board[index] = currentPlayer;
+      drawBoard();
+
+      if (checkWinner(currentPlayer)) {
+        messageElement.textContent = `Player ${currentPlayer} wins!`;
+        isGameOver = true;
+        autoReset();
+        return;
+      }
+
+      if (board.every(cell => cell !== '')) {
+        messageElement.textContent = "It's a draw!";
+        isGameOver = true;
+        autoReset();
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+
+      if (gameMode === 'computer' && currentPlayer === 'O') {
+        setTimeout(computerMove, 300);
+      } else {
+        messageElement.textContent = `Player ${currentPlayer}'s turn`;
+      }
+    }
+
+    function computerMove() {
+      let move;
+
+      const emptyIndices = board.map((cell, i) => cell === '' ? i : null).filter(i => i !== null);
+
+      if (aiDifficulty === 'easy') {
+        move = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+      } else if (aiDifficulty === 'medium') {
+        if (Math.random() < 0.5) {
+          move = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+        } else {
+          move = getBestMove();
+        }
+      } else {
+        move = getBestMove();
+      }
+
+      if (move !== undefined) {
+        handleClick(move);
+      }
+    }
+
+    function getBestMove() {
+      let bestScore = -Infinity;
+      let move;
+
+      for (let i = 0; i < board.length; i++) {
+        if (board[i] === '') {
+          board[i] = 'O';
+          let score = minimax(board, 0, false);
+          board[i] = '';
+          if (score > bestScore) {
+            bestScore = score;
+            move = i;
+          }
+        }
+      }
+
+      return move;
+    }
+
+    function minimax(newBoard, depth, isMaximizing) {
+      if (checkWinner('O')) return 10 - depth;
+      if (checkWinner('X')) return depth - 10;
+      if (newBoard.every(cell => cell !== '')) return 0;
+
+      if (isMaximizing) {
+        let bestScore = -Infinity;
+        for (let i = 0; i < newBoard.length; i++) {
+          if (newBoard[i] === '') {
+            newBoard[i] = 'O';
+            let score = minimax(newBoard, depth + 1, false);
+            newBoard[i] = '';
+            bestScore = Math.max(score, bestScore);
+          }
+        }
+        return bestScore;
+      } else {
+        let bestScore = Infinity;
+        for (let i = 0; i < newBoard.length; i++) {
+          if (newBoard[i] === '') {
+            newBoard[i] = 'X';
+            let score = minimax(newBoard, depth + 1, true);
+            newBoard[i] = '';
+            bestScore = Math.min(score, bestScore);
+          }
+        }
+        return bestScore;
+      }
+    }
+
+    function checkWinner(player) {
+      const winCombos = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
+      ];
+      return winCombos.some(combo =>
+        combo.every(index => board[index] === player)
+      );
+    }
+
+    function resetGame() {
+      clearTimeout(resetTimeout);
+      board = ['', '', '', '', '', '', '', '', ''];
+      currentPlayer = 'X';
+      isGameOver = false;
+      drawBoard();
+      if (gameMode === 'computer') {
+        messageElement.textContent = `Mode: Play vs Computer (${aiDifficulty}) — Player X starts`;
+      } else if (gameMode === 'human') {
+        messageElement.textContent = 'Mode: 2 Player Mode — Player X starts';
+      } else {
+        messageElement.textContent = 'Select a mode to start the game';
+      }
+    }
+
+    function autoReset() {
+      resetTimeout = setTimeout(() => {
+        resetGame();
+      }, 2000);
+    }
+
+    drawBoard(); // Initial draw
+  </script>
+</body>
+</html>
